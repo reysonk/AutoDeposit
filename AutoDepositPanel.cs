@@ -1,12 +1,16 @@
-﻿using Comfort.Common;
+using Comfort.Common;
 using EFT.Communications;
 using EFT.InventoryLogic;
+using EFT.MovingPlatforms;
 using EFT.UI;
 using EFT.UI.DragAndDrop;
+using EFT.UI.Ragfair;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Lifetime;
 using UnityEngine;
 using UnityEngine.UI;
+using static EFT.Interactive.WindowBreakingConfig;
 
 namespace AutoDeposit
 {
@@ -61,55 +65,235 @@ namespace AutoDeposit
 
             List<Item> stashItems = stash.GetNotMergedItems().ToList();
 
-            List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
-            foreach (Item item in items)
+            //way1
+            //Check key
+            if (!Input.GetKey(KeyCode.LeftAlt) & !Input.GetKey(KeyCode.LeftShift) & !Input.GetKey(KeyCode.LeftControl))
             {
-                // Skip root
-                if (item == container)
-                {
-                    continue;
-                }
 
-                // Don't move containers that aren't empty
-                if (item is LootItemClass lootItem && lootItem.GetNotMergedItems().Any(i => i != lootItem))
+                 List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
+                foreach (Item item in items)
                 {
-                    continue;
-                }
-
-                List<LootItemClass> targets = [];
-
-                foreach (var match in stashItems.Where(i => i.TemplateId == item.TemplateId))
-                {
-                    var targetContainer = match.Parent.Container.ParentItem as LootItemClass;
-                    if (targetContainer != stash)
+                    // Skip root
+                    if (item == container)
                     {
-                        targets.Add(targetContainer);
+                        continue;
                     }
-                }
 
-                if (!targets.Any())
+                    // Don't move containers that aren't empty
+                    if (item is LootItemClass lootItem && lootItem.GetNotMergedItems().Any(i => i != lootItem))
+                    {
+                        continue;
+                    }
+
+                    List<LootItemClass> targets = [];
+
+                    foreach (var match in stashItems.Where(i => i.TemplateId == item.TemplateId))
+                    {
+                        var targetContainer = match.Parent.Container.ParentItem as LootItemClass;
+                        if (targetContainer != stash)
+                        {
+                            targets.Add(targetContainer);
+                        }
+                    }
+
+                    if (!targets.Any())
+                    {
+                        continue;
+                    }
+
+                    var result = InteractionsHandlerClass.QuickFindAppropriatePlace(item, inventoryController, targets, InteractionsHandlerClass.EMoveItemOrder.MoveToAnotherSide | InteractionsHandlerClass.EMoveItemOrder.IgnoreItemParent, true);
+                    if (result.Failed || !inventoryController.CanExecute(result.Value))
+                    {
+                        string text = result.Error is InventoryError inventoryError ? inventoryError.GetLocalizedDescription() : result.Error.ToString();
+                        NotificationManagerClass.DisplayWarningNotification(text.Localized(), ENotificationDurationType.Default);
+
+                        continue;
+                    }
+
+                    if (result.Value is IDestroyResult destroyResult && destroyResult.ItemsDestroyRequired)
+                    {
+                        NotificationManagerClass.DisplayWarningNotification(new GClass3320(item, destroyResult.ItemsToDestroy).GetLocalizedDescription(), ENotificationDurationType.Default);
+                        continue;
+                    }
+
+                    inventoryController.RunNetworkTransaction(result.Value, null);
+                }
+            }
+            //way1 end
+
+            //way2
+            //**Add LeftAlt key modificator**
+            //-First,  LeftAlt + Click  => move everything of default logic, other item move to stash root without containers(for example, pull the cartridge out of the chamber, pull everything out of the containers, but leave the parent containers in the inventory).
+            // - Second, LeftAlt + Click => move empty any "containers" to root stash.
+
+            //Check key
+            if (Input.GetKey(KeyCode.LeftAlt))
+            {
+
+                List<Item> items = container.GetAllItems().ToList(); //Here No Reverse
+                foreach (Item item in items)
                 {
-                    continue;
+                    // Skip root
+                    if (item == container)
+                    {
+                        continue;
+                    }
+
+                    // Don't move containers that aren't empty
+                    if (item is LootItemClass lootItem && lootItem.GetAllItems().Any(i => i != lootItem))
+                    {
+                        continue;
+                    }
+
+                    List<LootItemClass> targets = [];
+
+                    foreach (var match in stashItems.Where(i => i.TemplateId == item.TemplateId))
+                    {
+                        var targetContainer = match.Parent.Container.ParentItem as LootItemClass;
+                        if (targetContainer != stash)
+                        {
+                            targets.Add(targetContainer);
+                        }
+                    }
+                    //add stash to targets
+                    {
+                        targets.Add(stash);
+                    }
+
+                    if (!targets.Any())
+                    {
+                        continue;
+                    }
+
+                    var result = InteractionsHandlerClass.QuickFindAppropriatePlace(item, inventoryController, targets, InteractionsHandlerClass.EMoveItemOrder.MoveToAnotherSide | InteractionsHandlerClass.EMoveItemOrder.IgnoreItemParent, true);
+                    if (result.Failed || !inventoryController.CanExecute(result.Value))
+                    {
+                        string text = result.Error is InventoryError inventoryError ? inventoryError.GetLocalizedDescription() : result.Error.ToString();
+                        NotificationManagerClass.DisplayWarningNotification(text.Localized(), ENotificationDurationType.Default);
+
+                        continue;
+                    }
+
+                    if (result.Value is IDestroyResult destroyResult && destroyResult.ItemsDestroyRequired)
+                    {
+                        NotificationManagerClass.DisplayWarningNotification(new GClass3320(item, destroyResult.ItemsToDestroy).GetLocalizedDescription(), ENotificationDurationType.Default);
+                        continue;
+                    }
+
+                    inventoryController.RunNetworkTransaction(result.Value, null);
+
                 }
-
-                var result = InteractionsHandlerClass.QuickFindAppropriatePlace(item, inventoryController, targets, InteractionsHandlerClass.EMoveItemOrder.MoveToAnotherSide | InteractionsHandlerClass.EMoveItemOrder.IgnoreItemParent, true);
-                if (result.Failed || !inventoryController.CanExecute(result.Value))
-                {
-                    string text = result.Error is InventoryError inventoryError ? inventoryError.GetLocalizedDescription() : result.Error.ToString();
-                    NotificationManagerClass.DisplayWarningNotification(text.Localized(), ENotificationDurationType.Default);
-
-                    continue;
-                }
-
-                if (result.Value is IDestroyResult destroyResult && destroyResult.ItemsDestroyRequired)
-                {
-                    NotificationManagerClass.DisplayWarningNotification(new GClass3320(item, destroyResult.ItemsToDestroy).GetLocalizedDescription(), ENotificationDurationType.Default);
-                    continue;
-                }
-
-                inventoryController.RunNetworkTransaction(result.Value, null);
 
             }
+            //way2 end
+
+
+            //way3
+            //**Add LeftControl key modificator**
+            //LeftControl + click => move all items to root stash, and at the same time, pull everything out of the containers to root stash
+
+            //Check key
+            if (Input.GetKey(KeyCode.LeftControl))
+            {
+
+                List<Item> items = container.GetAllItems().Reverse().ToList(); // Reverse so items get moved before their container
+                foreach (Item item in items)
+                {
+                    // Skip root
+                    if (item == container)
+                    {
+                        continue;
+                    }
+
+                    // Don't move containers that aren't empty
+                    if (item is LootItemClass lootItem && lootItem.GetAllItems().Any(i => i != lootItem))
+                    {
+                        continue;
+                    }
+
+                    List<LootItemClass> targets = [stash];
+                    
+                    if (!targets.Any())
+                    {
+                        continue;
+                    }
+
+                    var result = InteractionsHandlerClass.QuickFindAppropriatePlace(item, inventoryController, targets, InteractionsHandlerClass.EMoveItemOrder.MoveToAnotherSide | InteractionsHandlerClass.EMoveItemOrder.IgnoreItemParent, true);
+                    if (result.Failed || !inventoryController.CanExecute(result.Value))
+                    {
+                        string text = result.Error is InventoryError inventoryError ? inventoryError.GetLocalizedDescription() : result.Error.ToString();
+                        NotificationManagerClass.DisplayWarningNotification(text.Localized(), ENotificationDurationType.Default);
+
+                        continue;
+                    }
+
+                    if (result.Value is IDestroyResult destroyResult && destroyResult.ItemsDestroyRequired)
+                    {
+                        NotificationManagerClass.DisplayWarningNotification(new GClass3320(item, destroyResult.ItemsToDestroy).GetLocalizedDescription(), ENotificationDurationType.Default);
+                        continue;
+                    }
+
+                    inventoryController.RunNetworkTransaction(result.Value, null);
+
+                }
+
+            }
+            //way3 end
+
+
+            //way4
+            //**Add LeftShift key modificator**
+            //LeftShift + click => move all items to root stash, but don`t touch items inside any containers
+
+            //Check key
+            if (Input.GetKey(KeyCode.LeftShift))
+            {
+
+                List<Item> items = container.GetFirstLevelItems().ToList(); // Reverse so items get moved before their container
+                foreach (Item item in items)
+                {
+
+                    // Skip root
+                    if (item == container)
+                    {
+                        continue;
+                    }
+
+
+                    List<LootItemClass> targets = [];
+
+                    //add stash to targets
+                    {
+                        targets.Add(stash);
+                    }
+
+                    if (!targets.Any())
+                    {
+                        continue;
+                    }
+
+                    var result = InteractionsHandlerClass.QuickFindAppropriatePlace(item, inventoryController, targets, InteractionsHandlerClass.EMoveItemOrder.MoveToAnotherSide | InteractionsHandlerClass.EMoveItemOrder.IgnoreItemParent, true);
+                    if (result.Failed || !inventoryController.CanExecute(result.Value))
+                    {
+                        string text = result.Error is InventoryError inventoryError ? inventoryError.GetLocalizedDescription() : result.Error.ToString();
+                        NotificationManagerClass.DisplayWarningNotification(text.Localized(), ENotificationDurationType.Default);
+
+                        continue;
+                    }
+
+                    if (result.Value is IDestroyResult destroyResult && destroyResult.ItemsDestroyRequired)
+                    {
+                        NotificationManagerClass.DisplayWarningNotification(new GClass3320(item, destroyResult.ItemsToDestroy).GetLocalizedDescription(), ENotificationDurationType.Default);
+                        continue;
+                    }
+
+                    inventoryController.RunNetworkTransaction(result.Value, null);
+
+                }
+
+            }
+            //way4 end
+
 
             Singleton<GUISounds>.Instance.PlayItemSound(stash.ItemSound, EInventorySoundType.pickup, false);
         }
