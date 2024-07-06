@@ -7,10 +7,13 @@ using EFT.UI.DragAndDrop;
 using EFT.UI.Ragfair;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.Remoting.Lifetime;
 using UnityEngine;
 using UnityEngine.UI;
+using static AutoDeposit.R;
 using static EFT.Interactive.WindowBreakingConfig;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace AutoDeposit
 {
@@ -62,7 +65,6 @@ namespace AutoDeposit
             {
                 return;
             }
-
             List<Item> stashItems = stash.GetNotMergedItems().ToList();
 
             //way1
@@ -70,7 +72,7 @@ namespace AutoDeposit
             if (!Input.GetKey(KeyCode.LeftAlt) & !Input.GetKey(KeyCode.LeftShift) & !Input.GetKey(KeyCode.LeftControl))
             {
 
-                 List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
+                List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
                 foreach (Item item in items)
                 {
                     // Skip root
@@ -212,7 +214,7 @@ namespace AutoDeposit
                     }
 
                     List<LootItemClass> targets = [stash];
-                    
+
                     if (!targets.Any())
                     {
                         continue;

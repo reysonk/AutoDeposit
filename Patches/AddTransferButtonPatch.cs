@@ -3,7 +3,9 @@ using EFT.UI;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
 using System.Reflection;
+using System.Runtime;
 using UnityEngine;
+using static EFT.SpeedTree.TreeWind;
 
 namespace AutoDeposit
 {
@@ -17,6 +19,11 @@ namespace AutoDeposit
         [PatchPostfix]
         public static void Postfix(TransferItemsScreen __instance, GridView ____itemsToTransferGridView)
         {
+            if (!Settings.EnableTransfer.Value)
+            {
+                return;
+            }
+
             Transform leftGrid = __instance.transform.Find("TransferScreen/Left Person/Possessions Grid");
             AutoDepositPanel autoDepositPanel = leftGrid.Find("AutoDeposit")?.GetComponent<AutoDepositPanel>();
             if (autoDepositPanel == null)

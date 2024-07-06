@@ -5,16 +5,25 @@ using EFT.InventoryLogic;
 using EFT.UI;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using static AutoDeposit.R;
+using System.Runtime;
 
 namespace AutoDeposit
 {
     public class AddInventoryButtonsPatch : ModulePatch
     {
         private static readonly EItemUiContextType[] AllowedScreens = [EItemUiContextType.InventoryScreen, EItemUiContextType.ScavengerInventoryScreen];
-        private static readonly EquipmentSlot[] Slots = [EquipmentSlot.TacticalVest, EquipmentSlot.Pockets, EquipmentSlot.Backpack, EquipmentSlot.SecuredContainer];
+        private static readonly Dictionary<EquipmentSlot, Func<bool>> Slots = new()
+        {
+            { EquipmentSlot.TacticalVest, () => Settings.EnableRig.Value },
+            { EquipmentSlot.Pockets, () => Settings.EnablePockets.Value },
+            { EquipmentSlot.Backpack, () => Settings.EnableBackpack.Value },
+            { EquipmentSlot.SecuredContainer, () => Settings.EnableSecureContainer.Value }
+        };
 
         protected override MethodBase GetTargetMethod()
         {
@@ -29,9 +38,9 @@ namespace AutoDeposit
                 return;
             }
 
-            foreach (EquipmentSlot slot in Slots)
+            foreach (EquipmentSlot slot in Slots.Keys)
             {
-                if (!___dictionary_0.ContainsKey(slot))
+                if (!Slots[slot]() || !___dictionary_0.ContainsKey(slot))
                 {
                     continue;
                 }

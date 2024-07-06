@@ -1,4 +1,6 @@
-﻿using BepInEx;
+﻿using System.Runtime;
+using BepInEx;
+using static EFT.SpeedTree.TreeWind;
 
 namespace AutoDeposit
 {
@@ -8,6 +10,7 @@ namespace AutoDeposit
         public void Awake()
         {
             R.Init();
+            Settings.Init(Config);
 
             new AddInventoryButtonsPatch().Enable();
             new AddTransferButtonPatch().Enable();
