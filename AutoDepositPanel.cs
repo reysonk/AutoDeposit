@@ -84,7 +84,7 @@ namespace AutoDeposit
 
             //way1
             //Check key
-            if (!Input.GetKey(KeyCode.LeftAlt) & !Input.GetKey(KeyCode.LeftShift) & !Input.GetKey(KeyCode.LeftControl))
+            if (!Input.GetKey(KeyCode.LeftAlt) & !Input.GetKey(KeyCode.LeftShift) & !Input.GetKey(KeyCode.LeftControl) & !Input.GetKey(KeyCode.D))
             {
 
                  List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
@@ -139,12 +139,12 @@ namespace AutoDeposit
             //way1 end
 
             //way2
-            //**Add LeftAlt key modificator**
-            //-First,  LeftAlt + Click  => move everything of default logic, other item move to stash root without containers(for example, pull the cartridge out of the chamber, pull everything out of the containers, but leave the parent containers in the inventory).
-            // - Second, LeftAlt + Click => move empty any "containers" to root stash.
+            //**Add LeftShift key modificator**
+            //-First,  LeftShift + Click  => move everything of default logic, other item move to stash root without containers(for example, pull the cartridge out of the chamber, pull everything out of the containers, but leave the parent containers in the inventory).
+            // - Second, LeftShift + Click => move empty any "containers" to root stash.
 
             //Check key
-            if (Input.GetKey(KeyCode.LeftAlt))
+            if (Input.GetKey(KeyCode.LeftShift))
             {
 
                 List<Item> items = container.GetAllItems().ToList(); //Here No Reverse
@@ -173,9 +173,9 @@ namespace AutoDeposit
                         }
                     }
                     //add stash to targets
-                    {
-                        targets.Add(stash);
-                    }
+                    
+                    targets.Add(stash);
+                    
 
                     if (!targets.Any())
                     {
@@ -259,11 +259,11 @@ namespace AutoDeposit
 
 
             //way4
-            //**Add LeftShift key modificator**
-            //LeftShift + click => move all items to root stash, but don`t touch items inside any containers
+            //**Add LeftAlt key modificator**
+            //LeftAlt + click => move all items to root stash, but don`t touch items inside any containers
 
             //Check key
-            if (Input.GetKey(KeyCode.LeftShift))
+            if (Input.GetKey(KeyCode.LeftAlt))
             {
 
                 List<Item> items = container.GetFirstLevelItems().ToList(); // Reverse so items get moved before their container
@@ -280,9 +280,9 @@ namespace AutoDeposit
                     List<LootItemClass> targets = [];
 
                     //add stash to targets
-                    {
-                        targets.Add(stash);
-                    }
+                    
+                     targets.Add(stash);
+                    
 
                     if (!targets.Any())
                     {
@@ -317,7 +317,7 @@ namespace AutoDeposit
             //D + click => move all non vital weapons items to root stash
 
             //Check key
-            if (Input.GetKey(KeyCode.D)) 
+            if (Input.GetKey(KeyCode.D))
             {
 
                 List<Item> items = container.GetAllItems().ToList();
@@ -331,9 +331,9 @@ namespace AutoDeposit
                         List<LootItemClass> targets = [];
 
                         //add stash to targets
-                        {
-                            targets.Add(stash);
-                        }
+                        
+                         targets.Add(stash);
+                        
 
                         if (!targets.Any())
                         {
