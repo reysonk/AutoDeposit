@@ -6,14 +6,12 @@ using EFT.UI;
 using EFT.UI.DragAndDrop;
 using EFT.UI.Ragfair;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.Remoting.Lifetime;
 using UnityEngine;
 using UnityEngine.UI;
-using static AutoDeposit.R;
 using static EFT.Interactive.WindowBreakingConfig;
-using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace AutoDeposit
 {
@@ -44,6 +42,22 @@ namespace AutoDeposit
             button = GetComponent<Button>();
             button.onClick.AddListener(OnClick);
         }
+        public static IEnumerable<Item> GetWeaponNonVitalMods(Item item)
+        {
+            if (!(item is Weapon weapon))
+            {
+                return new Collection<Item>();
+            }
+
+            var mods = weapon.Mods;
+            var vitalItems = weapon.VitalParts
+                                    .Select(slot => slot.ContainedItem) // get all vital items from their respective slot
+                                    .Where(contained => contained != null); // only keep those not null
+
+            var nonVitalMods = mods.Where(mod => !vitalItems.Contains(mod));
+            return nonVitalMods;
+        }
+
 
         public void Show(LootItemClass container)
         {
@@ -65,6 +79,7 @@ namespace AutoDeposit
             {
                 return;
             }
+
             List<Item> stashItems = stash.GetNotMergedItems().ToList();
 
             //way1
@@ -72,7 +87,7 @@ namespace AutoDeposit
             if (!Input.GetKey(KeyCode.LeftAlt) & !Input.GetKey(KeyCode.LeftShift) & !Input.GetKey(KeyCode.LeftControl))
             {
 
-                List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
+                 List<Item> items = container.GetNotMergedItems().Reverse().ToList(); // Reverse so items get moved before their container
                 foreach (Item item in items)
                 {
                     // Skip root
@@ -214,7 +229,7 @@ namespace AutoDeposit
                     }
 
                     List<LootItemClass> targets = [stash];
-
+                    
                     if (!targets.Any())
                     {
                         continue;
@@ -296,6 +311,56 @@ namespace AutoDeposit
             }
             //way4 end
 
+
+            //way5
+            //**Add D key modificator**
+            //D + click => move all non vital weapons items to root stash
+
+            //Check key
+            if (Input.GetKey(KeyCode.D)) 
+            {
+
+                List<Item> items = container.GetAllItems().ToList();
+                foreach (Item item in items)
+                {
+                var nonVitalMods = GetWeaponNonVitalMods(item);
+
+                    foreach (Item nonvitalmod in nonVitalMods)
+                    {
+
+                        List<LootItemClass> targets = [];
+
+                        //add stash to targets
+                        {
+                            targets.Add(stash);
+                        }
+
+                        if (!targets.Any())
+                        {
+                            continue;
+                        }
+
+                        var result = InteractionsHandlerClass.QuickFindAppropriatePlace(nonvitalmod, inventoryController, targets, InteractionsHandlerClass.EMoveItemOrder.MoveToAnotherSide | InteractionsHandlerClass.EMoveItemOrder.IgnoreItemParent, true);
+                        if (result.Failed || !inventoryController.CanExecute(result.Value))
+                        {
+                            string text = result.Error is InventoryError inventoryError ? inventoryError.GetLocalizedDescription() : result.Error.ToString();
+                            NotificationManagerClass.DisplayWarningNotification(text.Localized(), ENotificationDurationType.Default);
+
+                            continue;
+                        }
+
+                        if (result.Value is IDestroyResult destroyResult && destroyResult.ItemsDestroyRequired)
+                        {
+                            NotificationManagerClass.DisplayWarningNotification(new GClass3320(item, destroyResult.ItemsToDestroy).GetLocalizedDescription(), ENotificationDurationType.Default);
+                            continue;
+                        }
+
+                        inventoryController.RunNetworkTransaction(result.Value, null);
+                    }
+                }
+
+            }
+            //way5 end
 
             Singleton<GUISounds>.Instance.PlayItemSound(stash.ItemSound, EInventorySoundType.pickup, false);
         }
